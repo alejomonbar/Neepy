@@ -88,14 +88,7 @@ def rot(theta,gate):
      r = matrix.expm((-1.0j/2)*theta*gate)
      return r
          
-def density_state(u,v,w):
-    """Based on the components u, v, w from the Bloch vector,
-    transfor to the density state.
-    Return 
-    p array (2,2):density state
-    """
-    p = 0.5*np.array([[1 + w , u - 1j*v],[u + 1j*v , 1 - w]])
-    return p
+
     
 # =============================================================================
 # MULTIQUIBTIS SYSTEM
@@ -341,6 +334,7 @@ def sp(n,Q):
     else:
         res = pauliMatrix(Q[0])
     return res   
+
 def pauliMatrix(n):
     """
     Return one of the Pauli matrix in this order i,x,y,z
