@@ -20,16 +20,19 @@ p = QuantumSystem(po) # Python class to describe quantum systems
 omega1 = 5 # Qubit 1 frequency
 omega2 = 1 # Qubit 2 frequency
 J = 2 # Coupling term for an interaction between both systems
-H = lambda t: p.hbar * (omega1 * np.kron(p.sz, p.si) +  omega2 * np.kron(p.si, p.sz) + J * np.kron(p.sx, p.sx)) # Hamiltonian 
+H = lambda t: - 0.5 * p.hbar * (omega1 * np.kron(p.sz, p.si) +  omega2 * np.kron(p.si, p.sz) - J * np.kron(p.sx, p.sx)) # Hamiltonian 
 time = np.linspace(0, 1, 100) # time evolution from 0 to 1 with 100 intermediate steps
 # von Neumann evolution
 p_von, dpdt_von = p.evolve(time, H, vonNeumann)
 # SEAQT evolution
 tauD = [0.5, 0.5]
 p_sea, dpdt_sea = p.evolve(time, H, SEAQT_gen, tauD) # SEAQT for a general system
-# Lindblad
-gammas = [[0, 1], [0, 1]] # gamma1->relaxation; gamma2->dephasing
-p_Lind, dpdt_Lind = p.evolve(time, H, Lindblad, gammas) # SEAQT for a general system
+# Lindblad evolution
+gammas_Q1 = [0, 1] # the first term "0" is associated with relaxation
+                    #the second "1" with dephasing
+gammas_Q2 = [0, 1] # gammas for the qubit 2
+gammas = [gammas_Q1, gammas_Q2] 
+p_Lind, dpdt_Lind = p.evolve(time, H, Lindblad, gammas) # Lidblad equation for a general system
 
 # =============================================================================
 # Visualization
@@ -59,7 +62,6 @@ ax.set_xlabel("time")
 ax.set_ylabel(r"$S/k_B$")
 ax.legend()
 fig.savefig("./Images/Entropy.pdf")
-
 
 # =============================================================================
 # Entropy generation
