@@ -69,7 +69,7 @@ def entropy(p_v):
         s[i] = - np.real(p.dot(matrix.logm(p,disp =False)[0])).trace()
     return s
 
-def entropy_production(p_v,dpdt_v):
+def entropy_production(p_v, dpdt_v):
     """
     Return the von Neumann entropy for the density state p_v
     Arguments:

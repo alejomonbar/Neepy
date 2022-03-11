@@ -11,7 +11,7 @@ import numpy as np
 import scipy.linalg as matrix
 import scipy.integrate as integrate
 from functions_neepy import dag, commutator, pro
-from functions_neepy import partial_trace, partial_trace_mul, J_hats, map_to_composite, O_J, FG_J
+from functions_neepy import partial_trace, J_hats, map_to_composite, O_J, FG_J
 from functions_neepy import anticom , kron_i, trA, trB
 from scipy.constants import hbar
 
@@ -214,16 +214,17 @@ def SEAQT_reservoir(self, t, p, H, tauD):
     return dpdt
 
     
-def SEAQT_2Res(self,t,p,H,tauD):
+def SEAQT_2Res(self, t, p, H, tauD):
     """
     Return the evolution of a density state following a non-equilibrium trajectory
-    through the steepest entropy ascente or entropy gradient. This is a proposal
-    of Gian Paolo Beretta (1984) based on the postulates of Gyftopoulos and Hatsopoulos.
+    through the steepest entropy ascente or entropy gradient. This is for a 2 qubit 
+    system subject to an interaction with the environment.
     
     Arguments:
         t -- Scalar, time
         p -- square matrix of 4 x 4, density state
-    
+        H -- Hamiltonian
+        tauD -- Relaxation time
     Return:
         dp/dt -- the change of the density state respect to the time
     """
@@ -293,12 +294,12 @@ def SEAQT_2Res(self,t,p,H,tauD):
     dpdt = np.reshape(dpdt,(1,16))
     return dpdt
 
-def SEAQT_gen(self, t, p, H, tauD):
+def SEAQT_gen(t, p, H, tauD):
     """
-    Return the GENERAL evolution of a density state following a non-equilibrium trajectory
-    through the steepest entropy ascente or entropy gradient. This is a proposal
-    of Gian Paolo Beretta (1985) in the paper Quantum Thermodynamics. A new equation of 
-    motion for a general quantum system.
+    Return the GENERAL evolution of a density state following a non-equilibrium
+    trajectory throughout the steepest entropy ascent or entropy gradient. This
+    is a proposal of Gian Paolo Beretta (1985) in the paper Quantum Thermodynamics.
+    A new equation of motion for a general quantum system.
     
     Arguments:
         t -- Scalar, time
@@ -310,104 +311,74 @@ def SEAQT_gen(self, t, p, H, tauD):
         dp/dt -- the change of the density state respect to the time
     """
     nn = int(np.sqrt(len(p)))
-    p = np.reshape(p,(nn,nn))
+    p = np.reshape(p, (nn, nn))
     nq = int(np.log2(nn))
     j_hats = J_hats(nq)
     I = np.eye(2)
     
     D = np.zeros((nn,nn),dtype = np.complex128)
-    logp = matrix.logm(p,disp=False)[0]
-    Dims = nq*[2]
-
-    H_D = H + self.H0
+    logp = matrix.logm(p, disp=False)[0]
+    Dims = nq * [2]
+    
     for j in range(nq):
-        pj = partial_trace(p,[j])
-        pj_bar = partial_trace(p,j_hats[j])
-        p_perm = map_to_composite(pj_bar,Dims,j)#product np.kron(I_J,pj_bar) Eq 12 Beretta 1985 paper
-        lnp_js = O_J(logp,p_perm,[j])
+        pj = partial_trace(p, [j])
+        pj_bar = partial_trace(p, j_hats[j])
+        p_perm = map_to_composite(pj_bar,Dims,j)# product np.kron(I_J, pj_bar) Eq 12 Beretta 1985 paper
+        lnp_js = O_J(logp,p_perm, [j])
         pjlogpj = pj @ lnp_js
-        H_js = O_J(H_D,p_perm,[j])
-        Trplogp = FG_J(I,lnp_js,pj) 
-        TrpH = FG_J(I,H_js,pj) 
-        TrpH2 = FG_J(H_js,H_js,pj) 
-        ac_s = anticom(pj,H_js)
-        TrpHlogp = FG_J(H_js,lnp_js,pj) 
-        Gamma = TrpH2 - TrpH**2.0
-        alpha = (TrpHlogp*TrpH - Trplogp*TrpH2)/Gamma
-        beta = (TrpH*Trplogp - TrpHlogp)/Gamma
-        Dj = (pjlogpj + alpha*pj + 0.5*beta*ac_s)
-        Dj_T = 0.5*(Dj + dag(Dj))
-        D += -(1/tauD[j])*kron_i(Dj_T,j,nq) @ p_perm
+        H_js = O_J(H, p_perm, [j])
+        Trplogp = FG_J(I,lnp_js, pj) 
+        TrpH = FG_J(I,H_js, pj) 
+        TrpH2 = FG_J(H_js, H_js, pj) 
+        ac_s = anticom(pj, H_js)
+        TrpHlogp = FG_J(H_js,lnp_js, pj) 
+        Gamma = TrpH2 - TrpH ** 2.0
+        alpha = (TrpHlogp * TrpH - Trplogp * TrpH2) / Gamma
+        beta = (TrpH * Trplogp - TrpHlogp) / Gamma
+        Dj = (pjlogpj + alpha * pj + 0.5 * beta * ac_s)
+        Dj_T = 0.5 * (Dj + dag(Dj))
+        D += -(1/tauD[j]) * kron_i(Dj_T, j, nq) @ p_perm
         
-    term1 = (-1.0j/self.hbar)*commutator(H,p)
+    term1 = (-1.0j / hbar) * commutator(H, p)
     term2 = D 
     dpdt = term1 + term2
-    dpdt = np.reshape(dpdt,(1,nn**2))
+    dpdt = np.reshape(dpdt, (1, nn ** 2))
     return dpdt
 
-def SEAQT_mul(self, t, p, H, tauD):
+def entropy(p_v):
     """
-    Return the GENERAL evolution of a density state following a non-equilibrium trajectory
-    through the steepest entropy ascente or entropy gradient. This is a proposal
-    of Gian Paolo Beretta (1985) in the paper Quantum Thermodynamics. A new equation of 
-    motion for a general quantum system.
-    
-    This differe from the others because it combines different size
-    subsystems
-    
+    Return the von Neumann entropy for the density state p_v
     Arguments:
-        t -- Scalar, time
-        p -- square matrix of N x N, density state with the subsystems
-        H -- Hamiltonian
-        tauD -- array with the number of subsistems for the disipative constant 
+        p_v (array): array with n x nnx nn
     
     Return:
-        dp/dt -- the change of the density state respect to the time
+        s (array): array n x 1 with the values of the entropy per each density state 
+                    in p_v
+                    
     """
-    nn = int(np.sqrt(len(p)))
-    p = np.reshape(p,(nn,nn))
-    
-    j_hats = [1,0]
-    
-    D = np.zeros((nn,nn),dtype = np.complex128)
-    try:
-        logp = matrix.logm(p,disp=False)[0]
-    except:
-        logp = np.zeros(p.shape)
-    Dims = self.Dims
-    ns = len(Dims)
-    H_D = H + self.H0
-    for j in range(ns):
-        I = np.eye(Dims[j])
-        pj = partial_trace_mul(p, Dims, j_hats[j])
-        pj_bar = partial_trace_mul(p, Dims, j)
-        p_perm = map_to_composite(pj_bar,Dims,j)#product np.kron(I_J,pj_bar) Eq 12 Beretta 1985 paper
-        lnp_js = partial_trace_mul(np.dot(p_perm,logp),Dims,j_hats[j])
-        pjlogpj = pj.dot(lnp_js)
-        H_js = partial_trace_mul(np.dot(p_perm,H_D),Dims,j_hats[j])
-        Trplogp = FG_J(I,lnp_js,pj) 
-        TrpH = FG_J(I,H_js,pj) 
-        TrpH2 = FG_J(H_js,H_js,pj) 
-        ac_s = anticom(pj,H_js)
-        TrpHlogp = FG_J(H_js,lnp_js,pj) 
-        Gamma = TrpH2 - TrpH**2.0
-        alpha = (TrpHlogp*TrpH - Trplogp*TrpH2)/Gamma
-        beta = (TrpH*Trplogp - TrpHlogp)/Gamma
-        Dj = (pjlogpj + alpha*pj + 0.5*beta*ac_s)
-        Dj_T = 0.5*(Dj + dag(Dj))
-        if j == 0:
-            DD = np.kron(Dj_T,np.eye(Dims[1]))
-        else:
-            DD = np.kron(np.eye(Dims[0]), Dj_T)
-        D += -(1/tauD[j])*DD.dot(p_perm)
-        
-    term1 = (-1.0j/self.hbar)*commutator(H,p)
-    term2 = D 
-    dpdt = term1 + term2
-    dpdt = np.reshape(dpdt,(1,nn**2))
-    return dpdt
+    n = len(p_v)
+    s = np.zeros((n, 1))
+    for i, p in enumerate(p_v):
+        s[i] = - (p @ matrix.logm(p, disp=False)[0]).trace().real
+    return s
 
-def Lindblad(self, t, p, H, gamma):
+def entropy_production(p_v, dpdt_v):
+    """
+    Return the von Neumann entropy for the density state p_v
+    Arguments:
+        p_v (array): array with n x nnx nn
+    
+    Return:
+        s (array): array n x 1 with the values of the entropy per each density state 
+                    in p_v
+         """
+    n = len(p_v)
+    dS = np.zeros((n,1))
+    for i, p in enumerate(p_v):
+        dS[i] = np.real(-dpdt_v[i,:,:].dot(matrix.logm(p,disp =False)[0]) - (dpdt_v[i,:,:])).trace()
+    return dS
+
+def Lindblad(t, p, H, gamma):
     """
     Return the evolution of a density state following a non-equilibrium trajectory
     through the Lindblad equation.
@@ -434,10 +405,10 @@ def Lindblad(self, t, p, H, gamma):
         else:
             gamma1 = gamma[0]
             gamma2 = gamma[1]
-        L_a = np.sqrt(gamma1)*np.array([[0,1],[0,0]])
-        L_a_s = [I,L_a]
-        L_p = np.sqrt(gamma2)* np.array([[1,0],[0,-1]])
-        L_p_s = [I,L_p]
+        L_a = np.sqrt(gamma1) * np.array([[0,1],[0,0]])
+        L_a_s = [I, L_a]
+        L_p = np.sqrt(gamma2) * np.array([[1,0],[0,-1]])
+        L_p_s = [I, L_p]
         L1 = L_a_s[int(pos[i,0])]
         L2 = L_p_s[int(pos[i,0])]
         for j in range(1,qb):
@@ -445,8 +416,8 @@ def Lindblad(self, t, p, H, gamma):
             L2 = np.kron(L2,L_p_s[int(pos[i,j])])
         D1 += 2 * L1 @ p @ dag(L1) - dag(L1) @ L1 @ p - p @ dag(L1) @ L1
         D2 += 2 * L2 @ p @ dag(L2) - dag(L2) @ L2 @ p - p @ dag(L2) @ L2
-    dpdt = (-1.0j/self.hbar) * commutator(H,p) + D1 + D2
-    dpdt = np.reshape(dpdt,(1,nn*nn))
+    dpdt = (-1.0j / hbar) * commutator(H, p) + D1 + D2
+    dpdt = np.reshape(dpdt, (1, nn * nn))
     return dpdt
 
 def vonNeumann(t, p, H):
