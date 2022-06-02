@@ -71,6 +71,6 @@ fig, ax = plt.subplots()
 for _, p_eq in enumerate([(p_von, dpdt_von), (p_sea, dpdt_sea), (p_Lind, dpdt_Lind)]):
     ax.plot(time, entropy_production(*p_eq), label=titles[_])
 ax.set_xlabel("time")
-ax.set_ylabel(r"$S/k_B$")
+ax.set_ylabel(r"$\dot S/k_B$")
 ax.legend()
 fig.savefig("./Images/EntropyProduction.pdf")
